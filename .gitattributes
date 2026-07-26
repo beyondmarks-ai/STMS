@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.dart text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.xml text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.onnx binary
+*.mp4 binary

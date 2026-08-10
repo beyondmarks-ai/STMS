@@ -14,7 +14,9 @@ COPY tools ./tools
 COPY models/README.md ./models/README.md
 RUN python tools/download_models.py
 
-RUN useradd --create-home apiuser
+RUN useradd --create-home apiuser \
+    && mkdir -p /app/runtime/evidence \
+    && chown -R apiuser:apiuser /app/runtime
 USER apiuser
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -94,7 +94,7 @@ Azure is a selective second-opinion layer. STMS sends only the best evidence cro
 | Cloud enrichment | Azure OpenAI vision models |
 | Face crop | Azure AI Face Detect with local OpenCV fallback |
 | Authentication | Microsoft Entra ID through `DefaultAzureCredential` |
-| Cloud infrastructure | Azure Bicep, Container Apps, Storage, Cosmos DB, ML, Key Vault, SignalR and monitoring |
+| Cloud infrastructure | Azure Container Apps, Container Registry, Blob Storage, Cosmos DB and Log Analytics |
 
 ## Repository structure
 
@@ -129,11 +129,26 @@ Azure is a selective second-opinion layer. STMS sends only the best evidence cro
 ### 1. Clone
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/stms.git
+git clone https://github.com/beyondmarks-ai/STMS.git
 cd stms
 ```
 
-### 2. Start the backend
+### 2. Run the Flutter app
+
+The app uses the deployed Azure HTTPS API by default, so a physical phone does not need a laptop-hosted backend:
+
+```powershell
+flutter pub get
+flutter run
+```
+
+Production API:
+
+```text
+https://stmsprod-api.wonderfulgrass-31348be0.centralindia.azurecontainerapps.io
+```
+
+### 3. Optional local backend
 
 PowerShell:
 
@@ -166,14 +181,11 @@ http://127.0.0.1:8001/health
 http://127.0.0.1:8001/docs
 ```
 
-### 3. Run Flutter
+Override the production API only when testing a local backend. For the Android emulator:
 
 ```powershell
-flutter pub get
-flutter run
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8001
 ```
-
-The Android emulator uses `http://10.0.2.2:8001` automatically in debug mode.
 
 For a physical phone, connect the phone and computer to the same Wi-Fi network, find the computer's LAN address with `ipconfig`, and run:
 
@@ -187,7 +199,7 @@ Example:
 flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8001
 ```
 
-Allow inbound TCP port `8001` in Windows Firewall if the phone cannot reach `/health`. Production builds must use authenticated HTTPS rather than a local HTTP address.
+Allow inbound TCP port `8001` in Windows Firewall when testing a local backend. Normal builds use the deployed HTTPS endpoint and require no `API_BASE_URL` argument.
 
 ## Azure enrichment
 
@@ -259,6 +271,11 @@ The backend reads environment variables from `backend/.env`.
 | `AZURE_OPENAI_ENDPOINT` | empty | Azure OpenAI resource endpoint |
 | `AZURE_OPENAI_DEPLOYMENT` | empty | Vision-capable deployment name |
 | `AZURE_FACE_ENDPOINT` | empty | Azure AI Face resource endpoint |
+| `STORAGE_ACCOUNT_URL` | empty | Blob service URL for persistent source videos and evidence |
+| `RAW_VIDEO_CONTAINER` | `raw-video` | Private source-video container |
+| `EVIDENCE_CONTAINER` | `evidence` | Private evidence container |
+| `COSMOS_ENDPOINT` | empty | Cosmos DB account endpoint for jobs and incidents |
+| `COSMOS_DATABASE` | `max-traffic` | Operational database; Azure deployment sets this to `stms` |
 
 Wrong-side detection must remain disabled for arbitrary or moving-camera videos. A production camera should use an explicit lane polygon and legal direction rather than inferred dominant flow.
 
@@ -290,17 +307,17 @@ docker build -t stms-api:local backend
 docker run --rm -p 8001:8000 stms-api:local
 ```
 
-Preview the Azure infrastructure before deployment:
+The production template provisions an always-on Container App, private ACR, private Blob containers, serverless Cosmos DB, Log Analytics and passwordless managed-identity access. Preview it before deployment:
 
 ```powershell
-az group create --name rg-stms-dev --location centralindia
+az group create --name stms-rg --location centralindia
 az deployment group what-if `
-  --resource-group rg-stms-dev `
+  --resource-group stms-rg `
   --template-file infra/main.bicep `
-  --parameters namePrefix=stmsdev environment=development
+  --parameters namePrefix=stmsprod environment=production
 ```
 
-Build and push `backend/Dockerfile` to Azure Container Registry, then provide the image as the Bicep `apiImage` parameter. For scale, move recorded-video processing to Azure ML batch endpoints or Container Apps Jobs, persist job/incident state in Cosmos DB, store private evidence in Blob Storage, and publish progress through SignalR.
+The deployed API uses Blob Storage for source videos and generated evidence, and Cosmos DB for jobs, incidents and reviews. It runs one always-on replica so the endpoint does not depend on a developer machine. For higher traffic, move video processing into queue-triggered Container Apps Jobs before increasing the API replica count.
 
 See [docs/architecture.md](docs/architecture.md) for the target production architecture.
 

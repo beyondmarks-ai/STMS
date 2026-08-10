@@ -115,7 +115,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _ConnectionRow(name: 'Local plate OCR', status: 'Ready'),
                     SizedBox(height: 15),
                     Text(
-                      'Hybrid analysis is active: ONNX tracks the video and Azure verifies selected evidence frames. Use API_BASE_URL with port 8001 on a physical device.',
+                      'Cloud analysis is active: the always-on Azure API stores videos and evidence privately, runs ONNX tracking, and uses Azure to verify selected evidence frames.',
                       style: TextStyle(
                         color: AppColors.muted,
                         fontSize: 11,

@@ -3,23 +3,21 @@
 ```text
 Flutter operator app
         |
-        | HTTPS + Entra token
+        | HTTPS
         v
-API Management -> Container Apps / FastAPI
+Azure Container Apps / FastAPI
         |                    |
         |                    +-> Cosmos DB (jobs, incidents, reviews)
-        |                    +-> SignalR (progress and alerts)
+        |                    +-> Private Blob Storage (source and evidence)
         v
-Private Blob Storage -> Azure ML batch inference
-                              |
-                              +-> detector + tracker + temporal rules
-                              +-> Azure Vision OCR on selected plate crops
-                              +-> Face Detection on evidence keyframes only
-                              v
-                       Private evidence container
+ONNX detector + tracker + temporal rules
+        |
+        +-> local plate OCR
+        +-> Azure OpenAI evidence verification
+        +-> Azure Face detection on keyframes only
 ```
 
-The cloud workflow is asynchronous because a recorded clip may take longer than a mobile request timeout. Locally, a FastAPI background task runs real ONNX inference and implements the same state transitions in one process. The Azure deployment should move that worker to Azure ML or Container Apps Jobs and use durable orchestration plus a persistent Cosmos repository.
+The deployed API accepts an upload, persists the source in Blob Storage and immediately returns a Cosmos-backed job. One always-on Container App currently performs background ONNX inference and writes private evidence to Blob Storage. Before scaling beyond one API replica, processing should move to a queue-triggered Container Apps Job with leases, retries and dead-letter handling.
 
 ## Model contract
 

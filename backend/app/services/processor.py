@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from ..models import Incident, JobStatus, ProcessingJob, ViolationType
-from ..store import MemoryStore
+from ..store import Store
 from ..config import get_settings
 from .video_analyzer import VideoAnalyzer
 from .azure_enrichment import AzureFaceCropper, AzureOpenAIVisionEnricher
@@ -17,7 +17,7 @@ class DemoVideoProcessor:
     incidents so the upload/review/audit workflow can be exercised end to end.
     """
 
-    def process(self, job: ProcessingJob, video_path: Path, store: MemoryStore) -> ProcessingJob:
+    def process(self, job: ProcessingJob, video_path: Path, store: Store) -> ProcessingJob:
         digest = hashlib.sha256(video_path.read_bytes()[:1_000_000]).hexdigest()
         templates = [
             (ViolationType.no_helmet, .91, "Rider persisted without an associated helmet for 2.6 seconds."),
@@ -44,7 +44,7 @@ class DemoVideoProcessor:
 class RealVideoProcessor:
     """Frame-by-frame CPU analyzer; Azure ML can host the same model contract."""
 
-    def process(self, job: ProcessingJob, video_path: Path, store: MemoryStore) -> ProcessingJob:
+    def process(self, job: ProcessingJob, video_path: Path, store: Store) -> ProcessingJob:
         def report(value: float) -> None:
             store.save_job(job.model_copy(update={"status": JobStatus.processing, "progress": value}))
 

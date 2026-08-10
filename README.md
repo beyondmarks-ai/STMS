@@ -38,6 +38,7 @@ STMS is a Flutter operator application and FastAPI video-analysis service for de
 
 - Responsive Android, phone, tablet and desktop-style control-room interface
 - Recorded-video upload with live job progress
+- College RTSP camera monitoring through a credential-safe local edge connector
 - Searchable evidence queue and review status filters
 - Evidence frame, vehicle, plate and rider-face crops
 - Vehicle intelligence workspace with OCR search, crop review and a guarded DataFlag integration state
@@ -203,6 +204,23 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8001
 
 Allow inbound TCP port `8001` in Windows Firewall when testing a local backend. Normal builds use the deployed HTTPS endpoint and require no `API_BASE_URL` argument.
 
+### 4. Connect a college IP camera
+
+Azure cannot directly reach a private college camera address. Run the included edge connector on a computer connected to the same LAN as the camera:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r edge\requirements.txt
+Copy-Item edge\.env.example edge\.env
+# Set a private EDGE_CONNECTOR_TOKEN in edge\.env.
+uvicorn edge.app:app --host 0.0.0.0 --port 8090
+```
+
+Verify `http://GATEWAY-IP:8090/health`, then open **Video jobs → Live IP camera** in STMS. Enter the gateway URL, pairing token, camera name and RTSP URL. Test the connection before starting monitoring.
+
+The connector keeps RTSP credentials in memory, uses RTSP-over-TCP, automatically reconnects, captures an 8-second segment every 60 seconds and uploads it to Azure over HTTPS. Never expose camera port `554` or connector port `8090` through the college router. See [edge/README.md](edge/README.md).
+
 ## Azure enrichment
 
 Azure enrichment is optional. Without Azure configuration, the local ONNX/OCR pipeline and review workflow continue to run.
@@ -335,6 +353,7 @@ See [docs/architecture.md](docs/architecture.md) for the target production archi
 - DataFlag lookup remains disabled until a server-side key and operator authentication are configured. The pilot wallet is shared because STMS does not yet have user accounts.
 - No incident automatically generates a fine, notice, signal change or other enforcement action.
 - Restrict evidence access to authenticated, authorized reviewers.
+- Keep RTSP credentials on the college LAN; do not store them in Azure, Git, screenshots or support messages.
 - Encrypt uploads and evidence in transit and at rest.
 - Apply a documented retention/deletion policy; 30 days is the suggested demonstration maximum.
 - Blur faces and licence plates in list thumbnails.

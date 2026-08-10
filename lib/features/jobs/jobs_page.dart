@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/page_header.dart';
 import '../../models/violation.dart';
 import '../../services/traffic_store.dart';
+import 'live_camera_card.dart';
 
 class JobsPage extends StatefulWidget {
   const JobsPage({super.key, required this.store});
@@ -33,12 +34,19 @@ class _JobsPageState extends State<JobsPage> {
       padding: pagePadding(context),
       children: [
         const PageHeader(
-          eyebrow: 'Recorded video',
-          title: 'Processing jobs',
+          eyebrow: 'Video sources',
+          title: 'Camera & processing jobs',
           description:
-              'Upload traffic footage and turn detections into reviewable evidence.',
+              'Monitor a college IP camera or upload recorded traffic footage for review.',
         ),
         const SizedBox(height: 24),
+        const LiveCameraCard(),
+        const SizedBox(height: 18),
+        const Text(
+          'Recorded video upload',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 12),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(22),

@@ -41,7 +41,8 @@ void main() {
 
       await tester.tap(find.text('Video jobs'));
       await tester.pumpAndSettle();
-      expect(find.text('Processing jobs'), findsOneWidget);
+      expect(find.text('Camera & processing jobs'), findsOneWidget);
+      expect(find.text('Live IP camera'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('Settings'));

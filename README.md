@@ -41,6 +41,7 @@ STMS is a Flutter operator application and FastAPI video-analysis service for de
 - Searchable evidence queue and review status filters
 - Evidence frame, vehicle, plate and rider-face crops
 - Vehicle intelligence workspace with OCR search, crop review and a guarded DataFlag integration state
+- Manual OCR correction, 100-credit lookup wallet and auditable DataFlag credit ledger
 - Azure-generated vehicle description, colour, probable make/model and uncertainty
 - Explicit approve, reject and needs-review workflow with operator notes
 - Privacy-conscious evidence presentation
@@ -247,6 +248,9 @@ Never put keys in the Flutter app, commit `.env`, or include credentials in scre
 | `GET` | `/api/v1/incidents` | List detected incident candidates |
 | `PATCH` | `/api/v1/incidents/{incident_id}/review` | Record a human review decision |
 | `GET` | `/api/v1/evidence/...` | Retrieve generated evidence assets |
+| `GET` | `/api/v1/vehicle-lookups/wallet` | Read shared pilot lookup credits and provider status |
+| `GET` | `/api/v1/vehicle-lookups/ledger` | Read the lookup credit ledger |
+| `POST` | `/api/v1/vehicle-lookups` | Check a manually confirmed registration through DataFlag |
 
 Example upload:
 
@@ -277,6 +281,8 @@ The backend reads environment variables from `backend/.env`.
 | `EVIDENCE_CONTAINER` | `evidence` | Private evidence container |
 | `COSMOS_ENDPOINT` | empty | Cosmos DB account endpoint for jobs and incidents |
 | `COSMOS_DATABASE` | `max-traffic` | Operational database; Azure deployment sets this to `stms` |
+| `DATAFLAG_API_KEY` | empty | Server-side DataFlag key; never place this in Flutter |
+| `DATAFLAG_ENDPOINT` | DataFlag v3 RC endpoint | Registration lookup provider URL |
 
 Wrong-side detection must remain disabled for arbitrary or moving-camera videos. A production camera should use an explicit lane polygon and legal direction rather than inferred dominant flow.
 
@@ -325,7 +331,8 @@ See [docs/architecture.md](docs/architecture.md) for the target production archi
 ## Privacy and responsible use
 
 - Face detection is used only to locate and crop evidence. STMS does not identify or match people.
-- STMS does not provide vehicle-owner lookup.
+- STMS never infers owner identity; any registry data must come from the authorized DataFlag response and remain subject to access controls.
+- DataFlag lookup remains disabled until a server-side key and operator authentication are configured. The pilot wallet is shared because STMS does not yet have user accounts.
 - No incident automatically generates a fine, notice, signal change or other enforcement action.
 - Restrict evidence access to authenticated, authorized reviewers.
 - Encrypt uploads and evidence in transit and at rest.

@@ -4,7 +4,12 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .models import HealthResponse
-from .routers import evidence_router, incidents_router, jobs_router
+from .routers import (
+    evidence_router,
+    incidents_router,
+    jobs_router,
+    vehicle_lookups_router,
+)
 
 settings = get_settings()
 settings.evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -17,6 +22,7 @@ app.add_middleware(
 )
 app.include_router(jobs_router, prefix='/api/v1')
 app.include_router(incidents_router, prefix='/api/v1')
+app.include_router(vehicle_lookups_router, prefix='/api/v1')
 if settings.storage_account_url:
     app.include_router(evidence_router, prefix='/api/v1')
 else:

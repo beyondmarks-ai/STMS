@@ -4,10 +4,14 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../models/violation.dart';
+import '../models/vehicle_lookup.dart';
 
 abstract interface class TrafficRepository {
   Future<List<ViolationIncident>> getIncidents();
   Future<List<ProcessingJob>> getJobs();
+  Future<VehicleCreditWallet> getVehicleCreditWallet();
+  Future<List<VehicleCreditLedgerEntry>> getVehicleCreditLedger();
+  Future<VehicleLookupResult> lookupVehicle(String vehicleNumber);
   Future<void> reviewIncident(String id, ReviewStatus status, String note);
   Future<ProcessingJob> submitVideo({
     required String fileName,
@@ -40,6 +44,45 @@ class ApiTrafficRepository implements TrafficRepository {
     return values
         .map((item) => ProcessingJob.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  @override
+  Future<VehicleCreditWallet> getVehicleCreditWallet() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/v1/vehicle-lookups/wallet'),
+    );
+    _ensureSuccess(response);
+    return VehicleCreditWallet.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<List<VehicleCreditLedgerEntry>> getVehicleCreditLedger() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/v1/vehicle-lookups/ledger'),
+    );
+    _ensureSuccess(response);
+    final values = jsonDecode(response.body) as List<dynamic>;
+    return values
+        .map(
+          (item) =>
+              VehicleCreditLedgerEntry.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  @override
+  Future<VehicleLookupResult> lookupVehicle(String vehicleNumber) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/v1/vehicle-lookups'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'vehicleNumber': vehicleNumber}),
+    );
+    _ensureSuccess(response);
+    return VehicleLookupResult.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   @override
@@ -167,6 +210,31 @@ class DemoTrafficRepository implements TrafficRepository {
 
   final List<ViolationIncident> _incidents = [];
   final List<ProcessingJob> _jobs = [];
+
+  @override
+  Future<VehicleCreditWallet> getVehicleCreditWallet() async =>
+      const VehicleCreditWallet(
+        balance: 100,
+        initialCredits: 100,
+        lookupCost: 1,
+        provider: 'DataFlag',
+        configured: false,
+      );
+
+  @override
+  Future<List<VehicleCreditLedgerEntry>> getVehicleCreditLedger() async => [
+    VehicleCreditLedgerEntry(
+      id: 'LED-INITIAL',
+      amount: 100,
+      balanceAfter: 100,
+      reason: 'Initial pilot allocation',
+      createdAt: DateTime.now(),
+    ),
+  ];
+
+  @override
+  Future<VehicleLookupResult> lookupVehicle(String vehicleNumber) =>
+      throw StateError('DataFlag lookup is not configured');
 
   @override
   Future<List<ViolationIncident>> getIncidents() async => List.of(_incidents);

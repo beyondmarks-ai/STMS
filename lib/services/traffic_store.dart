@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/violation.dart';
+import '../models/vehicle_lookup.dart';
 import 'traffic_repository.dart';
 
 class TrafficStore extends ChangeNotifier {
@@ -11,7 +12,16 @@ class TrafficStore extends ChangeNotifier {
 
   List<ViolationIncident> incidents = [];
   List<ProcessingJob> jobs = [];
+  VehicleCreditWallet vehicleWallet = const VehicleCreditWallet(
+    balance: 100,
+    initialCredits: 100,
+    lookupCost: 1,
+    provider: 'DataFlag',
+    configured: false,
+  );
+  List<VehicleCreditLedgerEntry> vehicleCreditLedger = [];
   bool loading = false;
+  bool vehicleLookupLoading = false;
   String? error;
 
   int get pendingCount =>
@@ -30,6 +40,11 @@ class TrafficStore extends ChangeNotifier {
       ]);
       incidents = values[0] as List<ViolationIncident>;
       jobs = values[1] as List<ProcessingJob>;
+      try {
+        vehicleWallet = await repository.getVehicleCreditWallet();
+      } catch (_) {
+        // Vehicle lookup is optional and must not block incident operations.
+      }
     } catch (exception) {
       error = exception.toString();
     } finally {
@@ -79,6 +94,34 @@ class TrafficStore extends ChangeNotifier {
       loading = false;
       notifyListeners();
     }
+  }
+
+  Future<VehicleLookupResult> lookupVehicle(String vehicleNumber) async {
+    vehicleLookupLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final result = await repository.lookupVehicle(vehicleNumber);
+      vehicleWallet = vehicleWallet.copyWith(balance: result.creditsRemaining);
+      try {
+        vehicleCreditLedger = await repository.getVehicleCreditLedger();
+      } catch (_) {
+        // The successful lookup result is still usable if ledger refresh fails.
+      }
+      return result;
+    } catch (exception) {
+      error = exception.toString();
+      rethrow;
+    } finally {
+      vehicleLookupLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadVehicleCreditLedger() async {
+    vehicleCreditLedger = await repository.getVehicleCreditLedger();
+    vehicleWallet = await repository.getVehicleCreditWallet();
+    notifyListeners();
   }
 
   Future<void> _pollJob(String jobId) async {

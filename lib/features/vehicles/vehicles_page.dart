@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/page_header.dart';
 import '../../models/violation.dart';
+import '../../models/vehicle_lookup.dart';
 import '../../services/traffic_store.dart';
 
 class VehiclesPage extends StatefulWidget {
@@ -77,17 +78,21 @@ class _VehiclesPageState extends State<VehiclesPage> {
                   icon: Icons.crop_free_rounded,
                   color: AppColors.violet,
                 ),
-                const _SummaryCard(
-                  label: 'DataFlag registry',
-                  value: 'Not connected',
-                  icon: Icons.cloud_off_outlined,
-                  color: AppColors.warning,
+                _SummaryCard(
+                  label: 'Lookup credits',
+                  value: '${widget.store.vehicleWallet.balance}',
+                  icon: Icons.account_balance_wallet_outlined,
+                  color: widget.store.vehicleWallet.balance > 0
+                      ? AppColors.success
+                      : AppColors.danger,
                   compactValue: true,
                 ),
               ],
             ),
             const SizedBox(height: 22),
-            _DataFlagNotice(),
+            _VehicleLookupPanel(store: widget.store),
+            const SizedBox(height: 14),
+            _DataFlagNotice(wallet: widget.store.vehicleWallet),
             const SizedBox(height: 18),
             Wrap(
               spacing: 12,
@@ -160,7 +165,8 @@ class _VehiclesPageState extends State<VehiclesPage> {
   Future<void> _openDetails(BuildContext context, ViolationIncident incident) =>
       showDialog<void>(
         context: context,
-        builder: (context) => _VehicleDetails(incident: incident),
+        builder: (context) =>
+            _VehicleDetails(incident: incident, store: widget.store),
       );
 }
 
@@ -244,7 +250,372 @@ class _SummaryCard extends StatelessWidget {
   );
 }
 
+class _VehicleLookupPanel extends StatefulWidget {
+  const _VehicleLookupPanel({
+    required this.store,
+    this.initialVehicleNumber = '',
+  });
+
+  final TrafficStore store;
+  final String initialVehicleNumber;
+
+  @override
+  State<_VehicleLookupPanel> createState() => _VehicleLookupPanelState();
+}
+
+class _VehicleLookupPanelState extends State<_VehicleLookupPanel> {
+  late final TextEditingController controller;
+  VehicleLookupResult? result;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = TextEditingController(text: widget.initialVehicleNumber);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final wallet = widget.store.vehicleWallet;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.ink,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: const Icon(
+                    Icons.manage_search_rounded,
+                    color: AppColors.lime,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Manual registration check',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Correct the OCR value before checking DataFlag.',
+                        style: TextStyle(color: AppColors.muted, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                StatusPill(
+                  label: '${wallet.balance} CREDITS',
+                  color: wallet.balance > 0
+                      ? AppColors.success
+                      : AppColors.danger,
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: MediaQuery.sizeOf(context).width < 600
+                      ? double.infinity
+                      : 300,
+                  child: TextField(
+                    controller: controller,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle registration number',
+                      hintText: 'KA01AB1234',
+                      prefixIcon: Icon(Icons.pin_outlined),
+                    ),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed:
+                      !wallet.configured ||
+                          wallet.balance < wallet.lookupCost ||
+                          widget.store.vehicleLookupLoading
+                      ? null
+                      : _lookup,
+                  icon: widget.store.vehicleLookupLoading
+                      ? const SizedBox.square(
+                          dimension: 17,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.search_rounded),
+                  label: Text(
+                    wallet.configured
+                        ? 'Check · ${wallet.lookupCost} credit'
+                        : 'API key required',
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _showLedger,
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('Credit ledger'),
+                ),
+              ],
+            ),
+            if (result != null) ...[
+              const SizedBox(height: 16),
+              _LookupResultPanel(result: result!),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _lookup() async {
+    final vehicleNumber = controller.text.trim();
+    if (vehicleNumber.isEmpty) {
+      _message('Enter or correct the vehicle registration number.');
+      return;
+    }
+    try {
+      final value = await widget.store.lookupVehicle(vehicleNumber);
+      if (!mounted) return;
+      setState(() => result = value);
+      _message('Vehicle details checked. One credit was deducted.');
+    } catch (error) {
+      if (mounted) _message(_friendlyError(error));
+    }
+  }
+
+  Future<void> _showLedger() async {
+    try {
+      await widget.store.loadVehicleCreditLedger();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => _CreditLedgerDialog(
+          entries: widget.store.vehicleCreditLedger,
+          balance: widget.store.vehicleWallet.balance,
+        ),
+      );
+    } catch (error) {
+      if (mounted) _message(_friendlyError(error));
+    }
+  }
+
+  void _message(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+}
+
+class _LookupResultPanel extends StatelessWidget {
+  const _LookupResultPanel({required this.result});
+
+  final VehicleLookupResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final fields = _flattenDetails(result.details);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: .07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.success.withValues(alpha: .3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.verified_outlined, color: AppColors.success),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  '${result.vehicleNumber} · DataFlag response',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              Text(
+                '${result.creditsRemaining} credits left',
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (fields.isEmpty)
+            const Text(
+              'The provider returned no displayable vehicle fields.',
+              style: TextStyle(color: AppColors.muted),
+            )
+          else
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final field in fields.take(24))
+                  _DetailFact(label: field.$1, value: field.$2),
+              ],
+            ),
+          const SizedBox(height: 10),
+          const Text(
+            'Authorized use only. Verify provider data against the OCR crop and do not treat it as an automatic enforcement decision.',
+            style: TextStyle(color: AppColors.muted, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreditLedgerDialog extends StatelessWidget {
+  const _CreditLedgerDialog({required this.entries, required this.balance});
+
+  final List<VehicleCreditLedgerEntry> entries;
+  final int balance;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Row(
+      children: [
+        const Expanded(child: Text('Vehicle lookup ledger')),
+        StatusPill(label: '$balance CREDITS', color: AppColors.success),
+      ],
+    ),
+    content: SizedBox(
+      width: 560,
+      child: entries.isEmpty
+          ? const Text('No credit entries recorded.')
+          : ListView.separated(
+              shrinkWrap: true,
+              itemCount: entries.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final entry = entries[index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        (entry.amount >= 0 ? AppColors.success : AppColors.blue)
+                            .withValues(alpha: .1),
+                    child: Icon(
+                      entry.amount >= 0 ? Icons.add : Icons.remove,
+                      color: entry.amount >= 0
+                          ? AppColors.success
+                          : AppColors.blue,
+                    ),
+                  ),
+                  title: Text(
+                    entry.vehicleNumber ?? entry.reason,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    '${entry.reason} · ${_formatDate(entry.createdAt)}',
+                  ),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        entry.amount > 0
+                            ? '+${entry.amount}'
+                            : '${entry.amount}',
+                        style: TextStyle(
+                          color: entry.amount >= 0
+                              ? AppColors.success
+                              : AppColors.blue,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        'Balance ${entry.balanceAfter}',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Close'),
+      ),
+    ],
+  );
+}
+
+List<(String, String)> _flattenDetails(Map<String, dynamic> details) {
+  final fields = <(String, String)>[];
+
+  void visit(String prefix, Object? value) {
+    if (value == null || value == '') return;
+    if (value is Map) {
+      for (final entry in value.entries) {
+        final key = prefix.isEmpty ? '${entry.key}' : '$prefix ${entry.key}';
+        visit(key, entry.value);
+      }
+      return;
+    }
+    if (value is List) {
+      if (value.isNotEmpty) fields.add((_titleCase(prefix), value.join(', ')));
+      return;
+    }
+    fields.add((_titleCase(prefix), '$value'));
+  }
+
+  visit('', details);
+  return fields;
+}
+
+String _titleCase(String value) {
+  final spaced = value
+      .replaceAllMapped(
+        RegExp(r'([a-z])([A-Z])'),
+        (match) => '${match[1]} ${match[2]}',
+      )
+      .replaceAll('_', ' ')
+      .trim();
+  return spaced
+      .split(RegExp(r'\s+'))
+      .map(
+        (word) => word.isEmpty
+            ? word
+            : '${word[0].toUpperCase()}${word.substring(1)}',
+      )
+      .join(' ');
+}
+
+String _friendlyError(Object error) {
+  final value = error.toString();
+  if (value.contains('503')) return 'DataFlag API key is not configured yet.';
+  if (value.contains('402')) return 'No vehicle lookup credits remain.';
+  if (value.contains('422')) return 'Check the vehicle registration number.';
+  return 'Vehicle lookup failed. No credit was deducted.';
+}
+
 class _DataFlagNotice extends StatelessWidget {
+  const _DataFlagNotice({required this.wallet});
+
+  final VehicleCreditWallet wallet;
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
@@ -253,23 +624,32 @@ class _DataFlagNotice extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       border: Border.all(color: AppColors.warning.withValues(alpha: .35)),
     ),
-    child: const Row(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.verified_user_outlined, color: AppColors.warning),
-        SizedBox(width: 12),
+        Icon(
+          wallet.configured
+              ? Icons.verified_user_outlined
+              : Icons.cloud_off_outlined,
+          color: AppColors.warning,
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'DataFlag lookup is prepared, not connected',
-                style: TextStyle(fontWeight: FontWeight.w800),
+                wallet.configured
+                    ? 'DataFlag lookup is available'
+                    : 'DataFlag lookup is prepared, not connected',
+                style: const TextStyle(fontWeight: FontWeight.w800),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
-                'STMS currently displays visual OCR and AI-estimated attributes only. Registered-owner data will remain hidden until the authorized API, consent and response fields are configured.',
-                style: TextStyle(
+                wallet.configured
+                    ? 'Each successful registration check costs ${wallet.lookupCost} credit. Confirm the OCR value and use registry data only for an authorized purpose.'
+                    : 'Add the DataFlag key to the Azure backend to enable checks. Failed or disabled checks do not deduct credits.',
+                style: const TextStyle(
                   color: AppColors.muted,
                   fontSize: 12,
                   height: 1.4,
@@ -369,9 +749,10 @@ class _VehicleCard extends StatelessWidget {
 }
 
 class _VehicleDetails extends StatelessWidget {
-  const _VehicleDetails({required this.incident});
+  const _VehicleDetails({required this.incident, required this.store});
 
   final ViolationIncident incident;
+  final TrafficStore store;
 
   @override
   Widget build(BuildContext context) {
@@ -474,39 +855,11 @@ class _VehicleDetails extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.canvas,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.lock_outline, color: AppColors.muted),
-                    SizedBox(width: 11),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Registered vehicle details',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'DataFlag API connection pending. No owner name, address or registration record has been requested.',
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              _VehicleLookupPanel(
+                store: store,
+                initialVehicleNumber: _hasReadablePlate(incident)
+                    ? incident.plate
+                    : '',
               ),
             ],
           ),

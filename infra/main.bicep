@@ -18,6 +18,9 @@ param azureOpenAIEndpoint string = ''
 param azureOpenAIDeployment string = 'gpt-4o'
 param azureFaceEndpoint string = ''
 
+@secure()
+param dataFlagApiKey string = ''
+
 var unique = uniqueString(subscription().id, resourceGroup().id, namePrefix)
 var storageName = take(toLower(replace('${namePrefix}${unique}', '-', '')), 24)
 var registryName = take(toLower(replace('${namePrefix}${unique}acr', '-', '')), 50)
@@ -156,6 +159,12 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
     managedEnvironmentId: containerEnvironment.id
     configuration: {
       activeRevisionsMode: 'Single'
+      secrets: empty(dataFlagApiKey) ? [] : [
+        {
+          name: 'dataflag-api-key'
+          value: dataFlagApiKey
+        }
+      ]
       registries: [
         {
           server: registry.properties.loginServer
@@ -174,7 +183,7 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
         {
           name: 'api'
           image: apiImage
-          env: [
+          env: concat([
             { name: 'ENVIRONMENT', value: environment }
             { name: 'DEMO_PROCESSOR', value: 'false' }
             { name: 'STORAGE_ACCOUNT_URL', value: storage.properties.primaryEndpoints.blob }
@@ -183,7 +192,10 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_OPENAI_ENDPOINT', value: azureOpenAIEndpoint }
             { name: 'AZURE_OPENAI_DEPLOYMENT', value: azureOpenAIDeployment }
             { name: 'AZURE_FACE_ENDPOINT', value: azureFaceEndpoint }
-          ]
+            { name: 'DATAFLAG_ENDPOINT', value: 'https://api.dataflag.in/api/v3/rc-details' }
+          ], empty(dataFlagApiKey) ? [] : [
+            { name: 'DATAFLAG_API_KEY', secretRef: 'dataflag-api-key' }
+          ])
           resources: {
             cpu: json('2.0')
             memory: '4Gi'

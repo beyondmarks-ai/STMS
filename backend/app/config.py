@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     azure_openai_deployment: str | None = None
     azure_face_endpoint: str | None = None
     azure_face_api_key: str | None = None
+    dataflag_api_key: str | None = None
+    dataflag_endpoint: str = 'https://api.dataflag.in/api/v3/rc-details'
+    dataflag_timeout_seconds: float = 30
     demo_processor: bool = False
     max_upload_mb: int = 500
     model_dir: Path = Path(__file__).resolve().parents[1] / "models"

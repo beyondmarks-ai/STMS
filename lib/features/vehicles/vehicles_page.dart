@@ -394,6 +394,10 @@ class _VehicleLookupPanelState extends State<_VehicleLookupPanel> {
       if (!mounted) return;
       setState(() => result = value);
       _message('Vehicle details checked. One credit was deducted.');
+      await showDialog<void>(
+        context: context,
+        builder: (context) => _VehicleRegistryDialog(result: value),
+      );
     } catch (error) {
       if (mounted) _message(_friendlyError(error));
     }
@@ -417,6 +421,63 @@ class _VehicleLookupPanelState extends State<_VehicleLookupPanel> {
 
   void _message(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+}
+
+class _VehicleRegistryDialog extends StatelessWidget {
+  const _VehicleRegistryDialog({required this.result});
+
+  final VehicleLookupResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return Dialog(
+      insetPadding: EdgeInsets.all(compact ? 8 : 20),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 760),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(compact ? 16 : 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.directions_car_filled_outlined,
+                    color: AppColors.blue,
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Registered vehicle details',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _LookupResultPanel(result: result),
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Done'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

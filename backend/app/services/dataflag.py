@@ -40,6 +40,34 @@ class DataFlagClient:
             payload = response.json()
         except (httpx.HTTPError, ValueError) as exception:
             raise DataFlagError('DataFlag lookup failed') from exception
-        if isinstance(payload, dict):
-            return payload
-        return {'result': payload}
+        if not isinstance(payload, dict):
+            raise DataFlagError('DataFlag returned an invalid response')
+        return self._extract_vehicle_details(payload)
+
+    @staticmethod
+    def _extract_vehicle_details(payload: dict[str, Any]) -> dict[str, Any]:
+        candidate = payload
+        for key in ('data', 'result', 'response', 'rc_details', 'rcDetails'):
+            nested = candidate.get(key)
+            if isinstance(nested, dict):
+                candidate = nested
+                break
+
+        details = {
+            key: value
+            for key, value in candidate.items()
+            if key.lower() not in {'credits_balance', 'credits_charged'}
+        }
+        normalized_keys = {
+            ''.join(character for character in key.lower() if character.isalnum())
+            for key in details
+        }
+        identifying_fields = {
+            'registrationnumber',
+            'vehiclemodel',
+            'vehiclemanufacturer',
+            'ownername',
+        }
+        if not normalized_keys.intersection(identifying_fields):
+            raise DataFlagError('DataFlag returned no vehicle details')
+        return details

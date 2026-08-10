@@ -40,6 +40,7 @@ STMS is a Flutter operator application and FastAPI video-analysis service for de
 - Recorded-video upload with live job progress
 - Searchable evidence queue and review status filters
 - Evidence frame, vehicle, plate and rider-face crops
+- Vehicle intelligence workspace with OCR search, crop review and a guarded DataFlag integration state
 - Azure-generated vehicle description, colour, probable make/model and uncertainty
 - Explicit approve, reject and needs-review workflow with operator notes
 - Privacy-conscious evidence presentation

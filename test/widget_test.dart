@@ -5,9 +5,7 @@ import 'package:stms/services/traffic_repository.dart';
 import 'package:stms/services/traffic_store.dart';
 
 void main() {
-  testWidgets('renders the STMS operator overview', (
-    tester,
-  ) async {
+  testWidgets('renders the STMS operator overview', (tester) async {
     await tester.pumpWidget(
       TrafficApp(store: TrafficStore(DemoTrafficRepository())),
     );
@@ -34,6 +32,11 @@ void main() {
       await tester.tap(find.text('Incidents'));
       await tester.pumpAndSettle();
       expect(find.text('Incident review'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('Vehicles'));
+      await tester.pumpAndSettle();
+      expect(find.text('Vehicle intelligence'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('Video jobs'));

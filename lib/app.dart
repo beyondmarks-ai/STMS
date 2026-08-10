@@ -5,6 +5,7 @@ import 'features/dashboard/dashboard_page.dart';
 import 'features/incidents/incidents_page.dart';
 import 'features/jobs/jobs_page.dart';
 import 'features/settings/settings_page.dart';
+import 'features/vehicles/vehicles_page.dart';
 import 'services/traffic_store.dart';
 
 class TrafficApp extends StatelessWidget {
@@ -43,6 +44,11 @@ class _OperatorShellState extends State<OperatorShell> {
       label: 'Incidents',
     ),
     NavigationDestination(
+      icon: Icon(Icons.directions_car_outlined),
+      selectedIcon: Icon(Icons.directions_car_filled_rounded),
+      label: 'Vehicles',
+    ),
+    NavigationDestination(
       icon: Icon(Icons.video_file_outlined),
       selectedIcon: Icon(Icons.video_file_rounded),
       label: 'Video jobs',
@@ -68,6 +74,7 @@ class _OperatorShellState extends State<OperatorShell> {
         onOpenIncidents: () => setState(() => index = 1),
       ),
       IncidentsPage(store: widget.store),
+      VehiclesPage(store: widget.store),
       JobsPage(store: widget.store),
       SettingsPage(store: widget.store),
     ];
@@ -146,10 +153,7 @@ class _MobileBrand extends StatelessWidget {
         ),
       ),
       SizedBox(width: 10),
-      Text(
-        'STMS',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-      ),
+      Text('STMS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
     ],
   );
 }

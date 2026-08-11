@@ -41,3 +41,7 @@ def test_upload_process_and_review() -> None:
     assert reviewed.status_code == 200
     assert reviewed.json()["status"] == "approved"
     assert reviewed.json()["note"] == "Evidence checked"
+    penalties = client.get("/api/v1/penalties").json()
+    penalty = next(item for item in penalties if item["incidentId"] == incident["id"])
+    assert penalty["status"] == "confirmed"
+    assert penalty["plate"] != "Unreadable"

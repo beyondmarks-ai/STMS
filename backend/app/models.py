@@ -27,6 +27,12 @@ class ReviewStatus(str, Enum):
     needs_review = "needsReview"
 
 
+class PenaltyStatus(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    void = "void"
+
+
 class JobStatus(str, Enum):
     queued = "queued"
     processing = "processing"
@@ -80,6 +86,40 @@ class ProcessingJob(CamelModel):
 class ReviewRequest(CamelModel):
     status: ReviewStatus
     note: str = Field(default="", max_length=1000)
+
+
+class Penalty(CamelModel):
+    id: str
+    incident_id: str = Field(alias="incidentId")
+    plate: str
+    violation_type: ViolationType = Field(alias="violationType")
+    violation_label: str = Field(alias="violationLabel")
+    amount: int = Field(gt=0)
+    currency: str = "INR"
+    status: PenaltyStatus = PenaltyStatus.pending
+    camera: str
+    detected_at: datetime = Field(alias="detectedAt")
+    created_at: datetime = Field(default_factory=utc_now, alias="createdAt")
+    updated_at: datetime = Field(default_factory=utc_now, alias="updatedAt")
+    review_note: str | None = Field(default=None, alias="reviewNote")
+
+
+class VehiclePenaltySummary(CamelModel):
+    plate: str
+    penalty_count: int = Field(alias="penaltyCount")
+    pending_count: int = Field(alias="pendingCount")
+    confirmed_count: int = Field(alias="confirmedCount")
+    total_amount: int = Field(alias="totalAmount")
+    confirmed_amount: int = Field(alias="confirmedAmount")
+    currency: str = "INR"
+    last_detected_at: datetime = Field(alias="lastDetectedAt")
+
+
+class PenaltyTariff(CamelModel):
+    violation_type: ViolationType = Field(alias="violationType")
+    label: str
+    amount: int = Field(gt=0)
+    currency: str = "INR"
 
 
 class HealthResponse(CamelModel):

@@ -8,6 +8,7 @@ from .routers import (
     evidence_router,
     incidents_router,
     jobs_router,
+    penalties_router,
     vehicle_lookups_router,
 )
 
@@ -22,6 +23,7 @@ app.add_middleware(
 )
 app.include_router(jobs_router, prefix='/api/v1')
 app.include_router(incidents_router, prefix='/api/v1')
+app.include_router(penalties_router, prefix='/api/v1')
 app.include_router(vehicle_lookups_router, prefix='/api/v1')
 if settings.storage_account_url:
     app.include_router(evidence_router, prefix='/api/v1')

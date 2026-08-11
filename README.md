@@ -43,6 +43,7 @@ STMS is a Flutter operator application and FastAPI video-analysis service for de
 - Evidence frame, vehicle, plate and rider-face crops
 - Vehicle intelligence workspace with OCR search, crop review and a guarded DataFlag integration state
 - Manual OCR correction, 100-credit lookup wallet and auditable DataFlag credit ledger
+- OCR-gated penalty ledger with fixed pilot tariffs, duplicate protection and repeat-vehicle totals
 - Azure-generated vehicle description, colour, probable make/model and uncertainty
 - Explicit approve, reject and needs-review workflow with operator notes
 - Privacy-conscious evidence presentation
@@ -265,6 +266,9 @@ Never put keys in the Flutter app, commit `.env`, or include credentials in scre
 | `GET` | `/api/v1/jobs/{job_id}` | Read job status and progress |
 | `GET` | `/api/v1/incidents` | List detected incident candidates |
 | `PATCH` | `/api/v1/incidents/{incident_id}/review` | Record a human review decision |
+| `GET` | `/api/v1/penalties` | List OCR-linked penalty records |
+| `GET` | `/api/v1/penalties/vehicles` | Aggregate penalties by normalized registration number |
+| `GET` | `/api/v1/penalties/tariffs` | Read the active fixed pilot tariff schedule |
 | `GET` | `/api/v1/evidence/...` | Retrieve generated evidence assets |
 | `GET` | `/api/v1/vehicle-lookups/wallet` | Read shared pilot lookup credits and provider status |
 | `GET` | `/api/v1/vehicle-lookups/ledger` | Read the lookup credit ledger |
@@ -297,7 +301,7 @@ The backend reads environment variables from `backend/.env`.
 | `STORAGE_ACCOUNT_URL` | empty | Blob service URL for persistent source videos and evidence |
 | `RAW_VIDEO_CONTAINER` | `raw-video` | Private source-video container |
 | `EVIDENCE_CONTAINER` | `evidence` | Private evidence container |
-| `COSMOS_ENDPOINT` | empty | Cosmos DB account endpoint for jobs and incidents |
+| `COSMOS_ENDPOINT` | empty | Cosmos DB account endpoint for jobs, incidents and penalties |
 | `COSMOS_DATABASE` | `max-traffic` | Operational database; Azure deployment sets this to `stms` |
 | `DATAFLAG_API_KEY` | empty | Server-side DataFlag key; never place this in Flutter |
 | `DATAFLAG_ENDPOINT` | DataFlag v3 RC endpoint | Registration lookup provider URL |
@@ -321,7 +325,7 @@ cd backend
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-The widget tests include phone-sized navigation coverage across Overview, Incidents, Video jobs and Settings to detect layout overflow.
+The widget tests include phone-sized navigation coverage across Overview, Incidents, Vehicles, Penalties, Video jobs and Settings to detect layout overflow.
 
 ## Docker and Azure deployment
 

@@ -5,10 +5,13 @@ import 'package:http/http.dart' as http;
 
 import '../models/violation.dart';
 import '../models/vehicle_lookup.dart';
+import '../models/penalty.dart';
 
 abstract interface class TrafficRepository {
   Future<List<ViolationIncident>> getIncidents();
   Future<List<ProcessingJob>> getJobs();
+  Future<List<PenaltyRecord>> getPenalties();
+  Future<List<VehiclePenaltySummary>> getVehiclePenaltySummaries();
   Future<VehicleCreditWallet> getVehicleCreditWallet();
   Future<List<VehicleCreditLedgerEntry>> getVehicleCreditLedger();
   Future<VehicleLookupResult> lookupVehicle(String vehicleNumber);
@@ -43,6 +46,31 @@ class ApiTrafficRepository implements TrafficRepository {
     final values = jsonDecode(response.body) as List<dynamic>;
     return values
         .map((item) => ProcessingJob.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<List<PenaltyRecord>> getPenalties() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/v1/penalties'));
+    _ensureSuccess(response);
+    final values = jsonDecode(response.body) as List<dynamic>;
+    return values
+        .map((item) => PenaltyRecord.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<List<VehiclePenaltySummary>> getVehiclePenaltySummaries() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/v1/penalties/vehicles'),
+    );
+    _ensureSuccess(response);
+    final values = jsonDecode(response.body) as List<dynamic>;
+    return values
+        .map(
+          (item) =>
+              VehiclePenaltySummary.fromJson(item as Map<String, dynamic>),
+        )
         .toList();
   }
 
@@ -210,6 +238,55 @@ class DemoTrafficRepository implements TrafficRepository {
 
   final List<ViolationIncident> _incidents = [];
   final List<ProcessingJob> _jobs = [];
+
+  List<PenaltyRecord> get _demoPenalties => [
+    PenaltyRecord(
+      id: 'PEN-INC-1048',
+      incidentId: 'INC-1048',
+      plate: 'KA 01 MJ 4821',
+      violationType: ViolationType.noHelmet,
+      violationLabel: 'Riding without a helmet',
+      amount: 1000,
+      currency: 'INR',
+      status: PenaltyStatus.pending,
+      camera: 'MG Road · Northbound',
+      detectedAt: _incidents.first.detectedAt,
+    ),
+    PenaltyRecord(
+      id: 'PEN-INC-1046',
+      incidentId: 'INC-1046',
+      plate: 'KL 07 CP 2230',
+      violationType: ViolationType.wrongSide,
+      violationLabel: 'Driving on the wrong side',
+      amount: 500,
+      currency: 'INR',
+      status: PenaltyStatus.confirmed,
+      camera: 'Station Road · Gate 2',
+      detectedAt: _incidents[2].detectedAt,
+    ),
+  ];
+
+  @override
+  Future<List<PenaltyRecord>> getPenalties() async => _demoPenalties;
+
+  @override
+  Future<List<VehiclePenaltySummary>> getVehiclePenaltySummaries() async =>
+      _demoPenalties
+          .map(
+            (item) => VehiclePenaltySummary(
+              plate: item.plate,
+              penaltyCount: 1,
+              pendingCount: item.status == PenaltyStatus.pending ? 1 : 0,
+              confirmedCount: item.status == PenaltyStatus.confirmed ? 1 : 0,
+              totalAmount: item.amount,
+              confirmedAmount: item.status == PenaltyStatus.confirmed
+                  ? item.amount
+                  : 0,
+              currency: item.currency,
+              lastDetectedAt: item.detectedAt,
+            ),
+          )
+          .toList();
 
   @override
   Future<VehicleCreditWallet> getVehicleCreditWallet() async =>

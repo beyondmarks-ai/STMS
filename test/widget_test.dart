@@ -29,23 +29,28 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Incidents'));
+      await tester.tap(find.byKey(const Key('nav-incidents')));
       await tester.pumpAndSettle();
       expect(find.text('Incident review'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Vehicles'));
+      await tester.tap(find.byKey(const Key('nav-vehicles')));
       await tester.pumpAndSettle();
       expect(find.text('Vehicle intelligence'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Video jobs'));
+      await tester.tap(find.byKey(const Key('nav-penalties')));
+      await tester.pumpAndSettle();
+      expect(find.text('Vehicle penalties'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byKey(const Key('nav-video-jobs')));
       await tester.pumpAndSettle();
       expect(find.text('Camera & processing jobs'), findsOneWidget);
       expect(find.text('Live IP camera'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Settings'));
+      await tester.tap(find.byKey(const Key('nav-settings')));
       await tester.pumpAndSettle();
       expect(find.text('System settings'), findsOneWidget);
       expect(tester.takeException(), isNull);

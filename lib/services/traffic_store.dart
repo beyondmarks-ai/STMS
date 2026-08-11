@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/violation.dart';
 import '../models/vehicle_lookup.dart';
+import '../models/penalty.dart';
 import 'traffic_repository.dart';
 
 class TrafficStore extends ChangeNotifier {
@@ -12,6 +13,8 @@ class TrafficStore extends ChangeNotifier {
 
   List<ViolationIncident> incidents = [];
   List<ProcessingJob> jobs = [];
+  List<PenaltyRecord> penalties = [];
+  List<VehiclePenaltySummary> vehiclePenaltySummaries = [];
   VehicleCreditWallet vehicleWallet = const VehicleCreditWallet(
     balance: 100,
     initialCredits: 100,
@@ -40,6 +43,7 @@ class TrafficStore extends ChangeNotifier {
       ]);
       incidents = values[0] as List<ViolationIncident>;
       jobs = values[1] as List<ProcessingJob>;
+      await _loadPenalties();
       try {
         vehicleWallet = await repository.getVehicleCreditWallet();
       } catch (_) {
@@ -62,6 +66,7 @@ class TrafficStore extends ChangeNotifier {
     final index = incidents.indexWhere((item) => item.id == incident.id);
     if (index >= 0) {
       incidents[index] = incident.copyWith(status: status, note: note);
+      await _loadPenalties();
       notifyListeners();
     }
   }
@@ -136,6 +141,7 @@ class TrafficStore extends ChangeNotifier {
         }
         if (matches.first.status == JobStatus.completed) {
           incidents = await repository.getIncidents();
+          await _loadPenalties();
           notifyListeners();
           return;
         }
@@ -143,6 +149,19 @@ class TrafficStore extends ChangeNotifier {
         error = exception.toString();
         notifyListeners();
       }
+    }
+  }
+
+  Future<void> _loadPenalties() async {
+    try {
+      final values = await Future.wait([
+        repository.getPenalties(),
+        repository.getVehiclePenaltySummaries(),
+      ]);
+      penalties = values[0] as List<PenaltyRecord>;
+      vehiclePenaltySummaries = values[1] as List<VehiclePenaltySummary>;
+    } catch (_) {
+      // Penalties remain isolated so an older backend cannot block operations.
     }
   }
 }

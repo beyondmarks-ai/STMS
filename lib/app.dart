@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'features/dashboard/dashboard_page.dart';
 import 'features/incidents/incidents_page.dart';
 import 'features/jobs/jobs_page.dart';
+import 'features/penalties/penalties_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/vehicles/vehicles_page.dart';
 import 'services/traffic_store.dart';
@@ -34,26 +35,37 @@ class _OperatorShellState extends State<OperatorShell> {
 
   static const destinations = [
     NavigationDestination(
+      key: Key('nav-overview'),
       icon: Icon(Icons.grid_view_rounded),
       selectedIcon: Icon(Icons.grid_view_rounded),
       label: 'Overview',
     ),
     NavigationDestination(
+      key: Key('nav-incidents'),
       icon: Icon(Icons.warning_amber_rounded),
       selectedIcon: Icon(Icons.warning_rounded),
       label: 'Incidents',
     ),
     NavigationDestination(
+      key: Key('nav-vehicles'),
       icon: Icon(Icons.directions_car_outlined),
       selectedIcon: Icon(Icons.directions_car_filled_rounded),
       label: 'Vehicles',
     ),
     NavigationDestination(
+      key: Key('nav-penalties'),
+      icon: Icon(Icons.receipt_long_outlined),
+      selectedIcon: Icon(Icons.receipt_long_rounded),
+      label: 'Penalties',
+    ),
+    NavigationDestination(
+      key: Key('nav-video-jobs'),
       icon: Icon(Icons.video_file_outlined),
       selectedIcon: Icon(Icons.video_file_rounded),
       label: 'Video jobs',
     ),
     NavigationDestination(
+      key: Key('nav-settings'),
       icon: Icon(Icons.tune_rounded),
       selectedIcon: Icon(Icons.tune_rounded),
       label: 'Settings',
@@ -75,6 +87,7 @@ class _OperatorShellState extends State<OperatorShell> {
       ),
       IncidentsPage(store: widget.store),
       VehiclesPage(store: widget.store),
+      PenaltiesPage(store: widget.store),
       JobsPage(store: widget.store),
       SettingsPage(store: widget.store),
     ];
@@ -95,6 +108,8 @@ class _OperatorShellState extends State<OperatorShell> {
             ),
             body: SafeArea(child: content),
             bottomNavigationBar: NavigationBar(
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.onlyShowSelected,
               selectedIndex: index,
               onDestinationSelected: (value) => setState(() => index = value),
               destinations: destinations,

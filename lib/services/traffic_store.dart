@@ -26,6 +26,14 @@ class TrafficStore extends ChangeNotifier {
   bool loading = false;
   bool vehicleLookupLoading = false;
   String? error;
+  String? jobRefreshError;
+  Timer? _jobTimer;
+  bool _pollingJobs = false;
+  bool _disposed = false;
+  bool _needsResultsRefresh = false;
+
+  bool _isActive(ProcessingJob job) =>
+      job.status == JobStatus.queued || job.status == JobStatus.processing;
 
   int get pendingCount =>
       incidents.where((item) => item.status == ReviewStatus.pending).length;
@@ -43,6 +51,8 @@ class TrafficStore extends ChangeNotifier {
       ]);
       incidents = values[0] as List<ViolationIncident>;
       jobs = values[1] as List<ProcessingJob>;
+      jobRefreshError = null;
+      _scheduleJobRefresh();
       await _loadPenalties();
       try {
         vehicleWallet = await repository.getVehicleCreditWallet();
@@ -88,10 +98,8 @@ class TrafficStore extends ChangeNotifier {
         path: path,
       );
       jobs = [job, ...jobs.where((item) => item.id != job.id)];
-      if (job.status == JobStatus.queued ||
-          job.status == JobStatus.processing) {
-        unawaited(_pollJob(job.id));
-      }
+      if (job.status == JobStatus.completed) _needsResultsRefresh = true;
+      _scheduleJobRefresh();
     } catch (exception) {
       error = exception.toString();
       rethrow;
@@ -129,27 +137,63 @@ class TrafficStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _pollJob(String jobId) async {
-    for (var attempt = 0; attempt < 600; attempt++) {
-      await Future<void>.delayed(const Duration(seconds: 2));
-      try {
-        jobs = await repository.getJobs();
+  void _scheduleJobRefresh() {
+    if (_disposed || _pollingJobs || _jobTimer != null) return;
+    if (!jobs.any(_isActive) && !_needsResultsRefresh) return;
+    _jobTimer = Timer(const Duration(seconds: 2), () {
+      _jobTimer = null;
+      unawaited(_refreshJobs());
+    });
+  }
+
+  Future<void> _refreshJobs() async {
+    if (_disposed || _pollingJobs) return;
+    _pollingJobs = true;
+    try {
+      final latest = await repository.getJobs().timeout(
+        const Duration(seconds: 20),
+      );
+      if (_disposed) return;
+      final activeIds = jobs.where(_isActive).map((job) => job.id).toSet();
+      if (latest.any(
+        (job) =>
+            activeIds.contains(job.id) && job.status == JobStatus.completed,
+      )) {
+        _needsResultsRefresh = true;
+      }
+      final latestIds = latest.map((job) => job.id).toSet();
+      // Keep submissions absent from a temporarily stale list response.
+      jobs = [
+        ...jobs.where((job) => _isActive(job) && !latestIds.contains(job.id)),
+        ...latest,
+      ];
+      if (_needsResultsRefresh) {
+        final results = await repository.getIncidents().timeout(
+          const Duration(seconds: 20),
+        );
+        if (_disposed) return;
+        incidents = results;
+        await _loadPenalties();
+        _needsResultsRefresh = false;
+      }
+      jobRefreshError = null;
+    } catch (_) {
+      jobRefreshError =
+          'Could not refresh analysis status. Reconnecting automatically; you can also tap Refresh.';
+    } finally {
+      _pollingJobs = false;
+      if (!_disposed) {
         notifyListeners();
-        final matches = jobs.where((item) => item.id == jobId);
-        if (matches.isEmpty || matches.first.status == JobStatus.failed) {
-          return;
-        }
-        if (matches.first.status == JobStatus.completed) {
-          incidents = await repository.getIncidents();
-          await _loadPenalties();
-          notifyListeners();
-          return;
-        }
-      } catch (exception) {
-        error = exception.toString();
-        notifyListeners();
+        _scheduleJobRefresh();
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _jobTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPenalties() async {

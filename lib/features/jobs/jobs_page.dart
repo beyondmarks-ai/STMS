@@ -33,12 +33,25 @@ class _JobsPageState extends State<JobsPage> {
     builder: (context, _) => ListView(
       padding: pagePadding(context),
       children: [
-        const PageHeader(
+        PageHeader(
           eyebrow: 'Video sources',
           title: 'Camera & processing jobs',
           description:
               'Monitor a college IP camera or upload recorded traffic footage for review.',
+          action: IconButton(
+            tooltip: 'Refresh jobs',
+            onPressed: widget.store.loading ? null : widget.store.load,
+            icon: const Icon(Icons.refresh),
+          ),
         ),
+        if (widget.store.jobRefreshError != null || widget.store.error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              widget.store.jobRefreshError ?? widget.store.error!,
+              style: const TextStyle(color: AppColors.danger),
+            ),
+          ),
         const SizedBox(height: 24),
         const LiveCameraCard(),
         const SizedBox(height: 18),
@@ -204,7 +217,7 @@ class _JobsPageState extends State<JobsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Video submitted. Evidence will appear in the incident queue.',
+            'Video queued for analysis. Follow its progress under Recent jobs.',
           ),
         ),
       );
@@ -265,6 +278,30 @@ class _JobTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: AppColors.muted, fontSize: 11),
                 ),
+                if (job.status == JobStatus.completed ||
+                    job.status == JobStatus.failed ||
+                    job.status == JobStatus.queued) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    switch (job.status) {
+                      JobStatus.completed =>
+                        job.incidentCount == 0
+                            ? 'Analysis complete - no violations detected.'
+                            : '${job.incidentCount} incidents ready in Incident review.',
+                      JobStatus.failed =>
+                        job.error ??
+                            'Analysis failed. Please retry the upload.',
+                      _ =>
+                        'Waiting for the analysis worker. Status updates automatically.',
+                    },
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: job.status == JobStatus.failed
+                          ? AppColors.danger
+                          : AppColors.muted,
+                    ),
+                  ),
+                ],
                 if (compact && job.status == JobStatus.processing) ...[
                   const SizedBox(height: 9),
                   LinearProgressIndicator(value: job.progress),

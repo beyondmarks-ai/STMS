@@ -31,7 +31,7 @@ class OperatorShell extends StatefulWidget {
   State<OperatorShell> createState() => _OperatorShellState();
 }
 
-class _OperatorShellState extends State<OperatorShell> {
+class _OperatorShellState extends State<OperatorShell> with WidgetsBindingObserver {
   int index = 0;
 
   static const destinations = [
@@ -82,7 +82,21 @@ class _OperatorShellState extends State<OperatorShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.store.load();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !widget.store.loading) {
+      widget.store.load();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override

@@ -21,6 +21,10 @@ Raw YOLO outputs previously used non-maximum suppression across all classes. A h
 
 This correction improves object retention in the road clip but does not change the ferry clip's result. It must not be presented as fixing every false negative.
 
+## Production verification
+
+The detector correction was deployed as AWS worker task revision 9, preserving the existing image, configuration and startup overrides. A fresh upload of the road clip, named `qa-helmet-detection.mp4` with camera `QA detector validation`, produced job `JOB-95CAF0D0`. It completed at 100% with seven no-helmet incident records and no job error. Image evidence was successfully retrieved from the API. The phone had disconnected from ADB by this stage, so this final check used the production API rather than a second phone UI upload.
+
 ## Missing coverage
 
 The uploaded-video analyzer has no accident/collision detector and no phone-use violation rule. A generic object detector can recognize a vehicle without understanding a crash. Accident coverage requires a separate temporal detector or validated event-recognition pipeline, incident schema/UI support, and positive and negative validation clips.

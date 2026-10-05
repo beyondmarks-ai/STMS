@@ -5,7 +5,7 @@ import 'services/traffic_repository.dart';
 import 'services/traffic_store.dart';
 
 const _productionApiBaseUrl =
-    'https://stmsprod-api.wonderfulgrass-31348be0.centralindia.azurecontainerapps.io';
+    'http://stms-prod-alb-1785449816.ap-south-1.elb.amazonaws.com';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

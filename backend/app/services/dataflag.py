@@ -7,6 +7,10 @@ class DataFlagError(RuntimeError):
     pass
 
 
+class DataFlagNoDetailsError(DataFlagError):
+    pass
+
+
 class DataFlagClient:
     def __init__(
         self,
@@ -47,11 +51,14 @@ class DataFlagClient:
     @staticmethod
     def _extract_vehicle_details(payload: dict[str, Any]) -> dict[str, Any]:
         candidate = payload
-        for key in ('data', 'result', 'response', 'rc_details', 'rcDetails'):
-            nested = candidate.get(key)
-            if isinstance(nested, dict):
-                candidate = nested
+        for _ in range(3):
+            nested = next(
+                (candidate.get(key) for key in ('data', 'result', 'response', 'rc_details', 'rcDetails') if isinstance(candidate.get(key), dict)),
+                None,
+            )
+            if not isinstance(nested, dict):
                 break
+            candidate = nested
 
         details = {
             key: value
@@ -64,10 +71,15 @@ class DataFlagClient:
         }
         identifying_fields = {
             'registrationnumber',
+            'registrationno',
+            'regnno',
+            'regnnumber',
             'vehiclemodel',
+            'makermodel',
+            'maker',
             'vehiclemanufacturer',
             'ownername',
         }
         if not normalized_keys.intersection(identifying_fields):
-            raise DataFlagError('DataFlag returned no vehicle details')
+            raise DataFlagNoDetailsError('DataFlag returned no vehicle details for this registration')
         return details

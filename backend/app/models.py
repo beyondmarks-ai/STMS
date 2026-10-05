@@ -18,6 +18,14 @@ class ViolationType(str, Enum):
     triple_riding = "tripleRiding"
     wrong_side = "wrongSide"
     ambulance_obstruction = "ambulanceObstruction"
+    tampered_plate = "tamperedPlate"
+
+
+class PlateStatus(str, Enum):
+    readable = "readable"
+    fake = "fake"
+    obscured = "obscured"
+    unreadable = "unreadable"
 
 
 class ReviewStatus(str, Enum):
@@ -45,6 +53,9 @@ class Incident(CamelModel):
     type: ViolationType
     status: ReviewStatus = ReviewStatus.pending
     plate: str = "Unreadable"
+    plate_status: PlateStatus = Field(default=PlateStatus.readable, alias="plateStatus")
+    mobile_capture: bool = Field(default=False, alias="mobileCapture")
+    image_proof_url: str = Field(default="", alias="imageProofUrl")
     camera: str
     confidence: float = Field(ge=0, le=1)
     detected_at: datetime = Field(default_factory=utc_now, alias="detectedAt")

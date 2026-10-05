@@ -11,6 +11,7 @@ from .routers import (
     penalties_router,
     vehicle_lookups_router,
 )
+from .routers.operations import router as operations_router
 
 settings = get_settings()
 settings.evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -25,6 +26,7 @@ app.include_router(jobs_router, prefix='/api/v1')
 app.include_router(incidents_router, prefix='/api/v1')
 app.include_router(penalties_router, prefix='/api/v1')
 app.include_router(vehicle_lookups_router, prefix='/api/v1')
+app.include_router(operations_router, prefix='/api/v1')
 if settings.storage_account_url:
     app.include_router(evidence_router, prefix='/api/v1')
 else:

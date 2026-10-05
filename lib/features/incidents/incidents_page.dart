@@ -373,6 +373,25 @@ class _IncidentDialogState extends State<_IncidentDialog> {
                 ),
               ],
               const SizedBox(height: 20),
+              if (widget.incident.type == ViolationType.tamperedPlate)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.warning.withValues(alpha: .35)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.report_gmailerrorred_outlined, color: AppColors.warning),
+                      SizedBox(width: 10),
+                      Expanded(child: Text('Suspicious or tampered plate alert: OCR confidence is below 75%. Verify the plate crop before approving a challan.', style: TextStyle(fontWeight: FontWeight.w700))),
+                    ],
+                  ),
+                ),
+              if (widget.incident.type == ViolationType.tamperedPlate)
+                const SizedBox(height: 18),
               const Text(
                 'Why this was flagged',
                 style: TextStyle(fontWeight: FontWeight.w800),

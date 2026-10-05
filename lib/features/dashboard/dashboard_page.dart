@@ -223,8 +223,9 @@ class _IncidentRow extends StatelessWidget {
     ViolationType.noHelmet => AppColors.danger,
     ViolationType.tripleRiding => AppColors.warning,
     ViolationType.wrongSide => AppColors.blue,
-    ViolationType.ambulanceObstruction => const Color(0xFF8A64D6),
-  };
+  ViolationType.ambulanceObstruction => const Color(0xFF8A64D6),
+  ViolationType.tamperedPlate => AppColors.warning,
+};
 
   @override
   Widget build(BuildContext context) {

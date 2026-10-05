@@ -73,4 +73,5 @@ def test_fixed_tariff_api() -> None:
         "tripleRiding": 1000,
         "wrongSide": 500,
         "ambulanceObstruction": 10000,
+        "tamperedPlate": 5000,
     }

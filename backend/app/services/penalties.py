@@ -17,6 +17,7 @@ PENALTY_SCHEDULE: dict[ViolationType, tuple[str, int]] = {
     ViolationType.triple_riding: ("More than two riders", 1000),
     ViolationType.wrong_side: ("Driving on the wrong side", 500),
     ViolationType.ambulance_obstruction: ("Failure to give way to an ambulance", 10000),
+    ViolationType.tampered_plate: ("Suspicious or tampered number plate", 5000),
 }
 
 

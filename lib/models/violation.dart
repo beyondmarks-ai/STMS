@@ -2,13 +2,26 @@ enum ViolationType {
   noHelmet('No helmet'),
   tripleRiding('Triple riding'),
   wrongSide('Wrong side'),
-  ambulanceObstruction('Ambulance obstruction');
+  ambulanceObstruction('Ambulance obstruction'),
+  tamperedPlate('Suspicious/tampered plate');
 
   const ViolationType(this.label);
   final String label;
 
   static ViolationType fromWire(String value) =>
       values.firstWhere((item) => item.name == value, orElse: () => noHelmet);
+}
+
+enum PlateStatus {
+  readable,
+  fake,
+  obscured,
+  unreadable;
+
+  static PlateStatus fromWire(String? value) => values.firstWhere(
+    (item) => item.name == value,
+    orElse: () => unreadable,
+  );
 }
 
 enum ReviewStatus {
@@ -47,6 +60,9 @@ class ViolationIncident {
     this.enrichmentConfidence,
     this.enrichmentUncertainties = const [],
     this.note,
+    this.plateStatus = PlateStatus.readable,
+    this.mobileCapture = false,
+    this.imageProofUrl,
   });
 
   final String id;
@@ -70,6 +86,9 @@ class ViolationIncident {
   final double? enrichmentConfidence;
   final List<String> enrichmentUncertainties;
   final String? note;
+  final PlateStatus plateStatus;
+  final bool mobileCapture;
+  final String? imageProofUrl;
 
   ViolationIncident copyWith({ReviewStatus? status, String? note}) =>
       ViolationIncident(
@@ -94,6 +113,9 @@ class ViolationIncident {
         enrichmentConfidence: enrichmentConfidence,
         enrichmentUncertainties: enrichmentUncertainties,
         note: note ?? this.note,
+        plateStatus: plateStatus,
+        mobileCapture: mobileCapture,
+        imageProofUrl: imageProofUrl,
       );
 
   factory ViolationIncident.fromJson(Map<String, dynamic> json) =>
@@ -124,6 +146,9 @@ class ViolationIncident {
                 .toList() ??
             const [],
         note: json['note'] as String?,
+        plateStatus: PlateStatus.fromWire(json['plateStatus'] as String?),
+        mobileCapture: json['mobileCapture'] as bool? ?? false,
+        imageProofUrl: json['imageProofUrl'] as String?,
       );
 }
 

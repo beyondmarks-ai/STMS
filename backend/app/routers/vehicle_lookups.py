@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from ..config import get_settings
 from ..credit_store import credit_store
-from ..services.dataflag import DataFlagClient, DataFlagError
+from ..services.dataflag import DataFlagClient, DataFlagError, DataFlagNoDetailsError
 from ..vehicle_models import (
     CreditLedgerEntry,
     CreditWallet,
@@ -52,6 +52,11 @@ def lookup_vehicle(request: VehicleLookupRequest) -> VehicleLookupResponse:
         )
     try:
         details = client.lookup(request.vehicle_number)
+    except DataFlagNoDetailsError as exception:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exception),
+        ) from exception
     except DataFlagError as exception:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

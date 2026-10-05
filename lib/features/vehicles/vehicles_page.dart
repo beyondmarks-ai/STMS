@@ -668,6 +668,7 @@ String _friendlyError(Object error) {
   final value = error.toString();
   if (value.contains('503')) return 'DataFlag API key is not configured yet.';
   if (value.contains('402')) return 'No vehicle lookup credits remain.';
+  if (value.contains('404')) return 'DataFlag found no details for this registration. Check the plate number and try again.';
   if (value.contains('422')) return 'Check the vehicle registration number.';
   return 'Vehicle lookup failed. No credit was deducted.';
 }

@@ -6,6 +6,7 @@ import 'features/incidents/incidents_page.dart';
 import 'features/jobs/jobs_page.dart';
 import 'features/penalties/penalties_page.dart';
 import 'features/settings/settings_page.dart';
+import 'features/operations/operations_page.dart';
 import 'features/vehicles/vehicles_page.dart';
 import 'services/traffic_store.dart';
 
@@ -65,6 +66,12 @@ class _OperatorShellState extends State<OperatorShell> {
       label: 'Video jobs',
     ),
     NavigationDestination(
+      key: Key('nav-operations'),
+      icon: Icon(Icons.hub_outlined),
+      selectedIcon: Icon(Icons.hub),
+      label: 'Operations',
+    ),
+    NavigationDestination(
       key: Key('nav-settings'),
       icon: Icon(Icons.tune_rounded),
       selectedIcon: Icon(Icons.tune_rounded),
@@ -89,6 +96,7 @@ class _OperatorShellState extends State<OperatorShell> {
       VehiclesPage(store: widget.store),
       PenaltiesPage(store: widget.store),
       JobsPage(store: widget.store),
+      OperationsPage(store: widget.store),
       SettingsPage(store: widget.store),
     ];
     return LayoutBuilder(

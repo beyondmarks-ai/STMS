@@ -22,12 +22,52 @@ abstract interface class TrafficRepository {
     Uint8List? bytes,
     String? path,
   });
+  Future<List<Map<String, dynamic>>> getHotspots();
+  Future<List<Map<String, dynamic>>> getVipVehicles();
+  Future<Map<String, dynamic>> addVipVehicle({required String plate, required String owner, required String reason});
+  Future<Map<String, dynamic>> previewNotification({required String incidentId, required String channel, required String recipient});
+  Future<Map<String, dynamic>> sandboxPayment({required String penaltyId, required int amount});
 }
 
 class ApiTrafficRepository implements TrafficRepository {
   ApiTrafficRepository(String baseUrl)
     : baseUrl = baseUrl.replaceAll(RegExp(r'/$'), '');
   final String baseUrl;
+
+  Future<Map<String, dynamic>> _json(String method, String path, [Map<String, dynamic>? body]) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final response = method == 'GET'
+        ? await http.get(uri)
+        : await http.post(uri, headers: {'content-type': 'application/json'}, body: jsonEncode(body));
+    _ensureSuccess(response);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getHotspots() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/v1/operations/hotspots'));
+    _ensureSuccess(response);
+    return (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getVipVehicles() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/v1/operations/vip'));
+    _ensureSuccess(response);
+    return (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<Map<String, dynamic>> addVipVehicle({required String plate, required String owner, required String reason}) =>
+      _json('POST', '/api/v1/operations/vip', {'plate': plate, 'owner': owner, 'reason': reason});
+
+  @override
+  Future<Map<String, dynamic>> previewNotification({required String incidentId, required String channel, required String recipient}) =>
+      _json('POST', '/api/v1/operations/notifications/preview', {'incidentId': incidentId, 'channel': channel, 'recipient': recipient});
+
+  @override
+  Future<Map<String, dynamic>> sandboxPayment({required String penaltyId, required int amount}) =>
+      _json('POST', '/api/v1/operations/payments/upi-sandbox', {'penaltyId': penaltyId, 'amount': amount});
 
   @override
   Future<List<ViolationIncident>> getIncidents() async {
@@ -354,4 +394,26 @@ class DemoTrafficRepository implements TrafficRepository {
     _jobs.insert(0, job);
     return job;
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> getHotspots() async => [
+    {'camera': 'Demo Junction', 'violationCount': 8, 'riskScore': 87.5, 'topViolation': 'tripleRiding'},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> getVipVehicles() async => [
+    {'plate': 'KA01VIP001', 'owner': 'Emergency Services', 'reason': 'Ambulance escort', 'active': true},
+  ];
+
+  @override
+  Future<Map<String, dynamic>> addVipVehicle({required String plate, required String owner, required String reason}) async =>
+      {'plate': plate, 'owner': owner, 'reason': reason, 'active': true};
+
+  @override
+  Future<Map<String, dynamic>> previewNotification({required String incidentId, required String channel, required String recipient}) async =>
+      {'status': 'preview', 'sandbox': true, 'channel': channel, 'recipient': recipient};
+
+  @override
+  Future<Map<String, dynamic>> sandboxPayment({required String penaltyId, required int amount}) async =>
+      {'status': 'success', 'sandbox': true, 'penaltyId': penaltyId, 'amount': amount};
 }

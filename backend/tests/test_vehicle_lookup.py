@@ -69,6 +69,6 @@ def test_dataflag_credit_only_response_is_not_vehicle_details() -> None:
             {'credits_balance': 10, 'credits_charged': 1}
         )
     except DataFlagError as exception:
-        assert str(exception) == 'DataFlag returned no vehicle details'
+        assert str(exception) == 'DataFlag returned no vehicle details for this registration'
     else:
         raise AssertionError('Credit-only responses must not be charged as lookups')

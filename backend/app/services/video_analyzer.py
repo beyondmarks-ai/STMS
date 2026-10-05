@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from rapidocr_onnxruntime import RapidOCR
 
-from ..models import Incident, ProcessingJob, ViolationType
+from ..models import Incident, PlateStatus, ProcessingJob, ViolationType
 from .azure_enrichment import (
     AzureFaceCropper,
     AzureOpenAIVisionEnricher,
@@ -42,6 +42,7 @@ class VehicleTrack:
     best_box: tuple[int, int, int, int] | None = None
     plate_crop: np.ndarray | None = None
     plate_confidence: float = 0
+    ocr_confidence: float = 0
     ocr_text: str = "Unreadable"
     scene_text: str = ""
     plate_read: bool = False
@@ -317,7 +318,7 @@ class VideoAnalyzer:
                     track.plate_crop = plate_crop.copy()
                     track.plate_confidence = best.confidence
         if track.plate_crop is not None:
-            track.ocr_text = self._ocr_plate(track.plate_crop)
+            track.ocr_text, track.ocr_confidence = self._ocr_plate(track.plate_crop)
         if track.label in {"car", "bus", "truck"} and not track.scene_text:
             track.scene_text = " ".join(self._ocr_strings(vehicle_crop)).upper()
 
@@ -329,18 +330,27 @@ class VideoAnalyzer:
         if crop.size:
             track.scene_text = " ".join(self._ocr_strings(crop)).upper()
 
-    def _ocr_plate(self, crop: np.ndarray) -> str:
+    def _ocr_plate(self, crop: np.ndarray) -> tuple[str, float]:
         scaled = cv2.resize(crop, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         gray = cv2.cvtColor(scaled, cv2.COLOR_BGR2GRAY)
         enhanced = cv2.createCLAHE(2.0, (8, 8)).apply(gray)
-        candidates = self._ocr_strings(enhanced)
-        candidates.extend(self._ocr_strings(scaled))
-        normalized = [normalize_indian_plate(value) for value in candidates]
-        valid = [value for value in normalized if value]
+        candidates = self._ocr_results(enhanced)
+        candidates.extend(self._ocr_results(scaled))
+        valid = [(normalize_indian_plate(value), confidence) for value, confidence in candidates]
+        valid = [(value, confidence) for value, confidence in valid if value]
         if valid:
-            return valid[0]
-        raw = "".join(candidates[:1]).strip()
-        return raw[:20] if raw else "Unreadable"
+            return valid[0][0], valid[0][1]
+        raw = candidates[0][0].strip() if candidates else ""
+        return (raw[:20] if raw else "Unreadable"), (candidates[0][1] if candidates else 0)
+
+    def _ocr_results(self, image: np.ndarray) -> list[tuple[str, float]]:
+        try:
+            result, _ = self.ocr(image)
+            if not result:
+                return []
+            return [(str(item[1]), float(item[2])) for item in result if len(item) >= 3 and float(item[2]) >= .05]
+        except (RuntimeError, ValueError, cv2.error):
+            return []
 
     def _ocr_strings(self, image: np.ndarray) -> list[str]:
         try:
@@ -381,6 +391,8 @@ class VideoAnalyzer:
                 and len(track.triple_times) >= 2
             ):
                 findings.append((ViolationType.triple_riding, min(.96, .74 + .04 * len(track.triple_times)), f"{track.max_riders} riders remained associated with one {track.label}."))
+            if track.plate_crop is not None and track.ocr_confidence < .75:
+                findings.append((ViolationType.tampered_plate, .82, f"Number plate OCR confidence was {track.ocr_confidence:.0%}, below the 75% safety threshold; possible occlusion or tampering."))
             movement = track.movement
             if allowed_direction is not None:
                 dot = movement[0] * allowed_direction[0] + movement[1] * allowed_direction[1]
@@ -473,6 +485,13 @@ class VideoAnalyzer:
                 else "uncalibrated-1"
             ),
         )
+        normalized_plate = ''.join(c for c in track.ocr_text.upper() if c.isalnum())
+        if not normalized_plate or normalized_plate in {'UNREADABLE', 'UNKNOWN'}:
+            incident.plate_status = PlateStatus.unreadable
+        elif track.ocr_confidence < .75 or len(normalized_plate) < 7 or len(set(normalized_plate)) <= 2:
+            incident.plate_status = PlateStatus.obscured
+        elif not any(c.isdigit() for c in normalized_plate) or not any(c.isalpha() for c in normalized_plate):
+            incident.plate_status = PlateStatus.fake
         incident.rider_count = rider_count
         incident.vehicle_type = (
             enrichment.vehicle_type if enrichment else track.label
@@ -513,6 +532,7 @@ class VideoAnalyzer:
             cv2.imwrite(str(folder / "plate.jpg"), track.plate_crop)
             incident.plate_crop_url = f"/api/v1/evidence/{job.id}/{incident.id}/plate.jpg"
         incident.evidence_url = f"/api/v1/evidence/{job.id}/{incident.id}/frame.jpg"
+        incident.image_proof_url = incident.evidence_url
         return incident
 
     def _find_face(self, vehicle_crop: np.ndarray) -> np.ndarray | None:

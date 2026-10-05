@@ -59,8 +59,12 @@ STMS is a Flutter operator application and FastAPI video-analysis service for de
 | Licence plate | Plate localization, evidence crop and local OCR | Readability depends on angle, motion and resolution |
 | Rider face crop | Azure Face rectangle detection with local fallback | Detection/cropping only; no identification |
 | Vehicle attributes | Azure OpenAI evidence-frame enrichment | Estimates are shown with confidence and uncertainty |
+| Accident / collision | Not implemented in the uploaded-video analyzer | No accident model or temporal collision rule is loaded |
+| Phone use while riding | Not implemented in the uploaded-video analyzer | The generic detector's phone class is not evaluated as a violation |
 
 The local models inspect actual video pixels. They are suitable for development and human-reviewed demonstrations, but not a substitute for a validated production model.
+
+A completed job means the processing pipeline finished. Zero incidents means none of the implemented rules produced an alert; it does not establish that the video contains no violations or accidents. The default analyzer samples two frames per second, and no-helmet and triple-riding alerts require repeated detections on the same vehicle track. Missed vehicles, small heads, occlusion and broken tracks can therefore produce false negatives.
 
 ## How it works
 

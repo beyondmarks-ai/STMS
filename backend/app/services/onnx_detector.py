@@ -99,7 +99,19 @@ class OnnxYoloDetector:
             boxes.append([x, y, int(width / ratio), int(height / ratio)])
             scores.append(score)
             class_ids.append(class_id)
-        selected = cv2.dnn.NMSBoxes(boxes, scores, self.confidence, self.iou)
+        # Suppress duplicates within each class. A rider and motorcycle can
+        # overlap heavily; cross-class NMS would discard one of them.
+        selected: list[int] = []
+        for class_id in sorted(set(class_ids)):
+            indices = [i for i, value in enumerate(class_ids) if value == class_id]
+            kept = cv2.dnn.NMSBoxes(
+                [boxes[i] for i in indices],
+                [scores[i] for i in indices],
+                self.confidence,
+                self.iou,
+            )
+            selected.extend(indices[int(i)] for i in np.array(kept).reshape(-1))
+        selected.sort(key=lambda i: scores[i], reverse=True)
         return [
             Detection(
                 self.names.get(class_ids[int(index)], str(class_ids[int(index)])),
